@@ -1,56 +1,70 @@
-# import sys
-# import time
-#
-# import Message
-#
-#
-# class Client:
-#
-#     def __init__(self, name, address):
-#         self.name = name
-#         self.address = address
-#
-#     def Sendto(self, contents, dest):
-#         message = Message.Message(self.address, contents, dest, time.localtime())
+import os
+import queue
 import select
+import signal
+import sys
+import threading
+import pygame
 from time import sleep
 from socket import *
 
 
-# def sendmsgto():
-#
+class Client:
+
+    def __init__(self):
+        self.sock = socket(AF_INET, SOCK_STREAM)
+        self.sock.connect(('127.0.0.1', 55000))
+        self.uname = input("Your Username: ")
+        self.socket_list = [self.sock]
+        self.connected = False
+        self.disconnected = False
+        self.inputq = queue.Queue()
+
+    def deal_with_input(self):
+        while True:
+            if self.disconnected:
+                break
+            if not self.connected:
+                self.sock.send(bytes(self.uname, encoding='utf8'))
+                self.connected = True
+            else:
+                try:
+                    action = self.inputq.get(timeout=3600)
+                    self.sock.send(bytes(action, encoding='utf8'))
+                except queue.Empty:
+                    self.sock.send(bytes("<server>disconnect", encoding='utf8'))
+                    self.disconnected = True
+                    break
+        # self.sock.close()
+
+    def recv_loop(self):
+        while True:
+            read_list, _, _ = select.select(self.socket_list, [], [], 5)
+            for curr_sock in read_list:
+                response = bytes.decode(getmsg(curr_sock), encoding='utf8')
+                if response == "server: Goodbye":
+                    self.disconnected = True
+                if response == "ERROR":
+                    print("Server Error")
+                    self.sock.close()
+                    os.kill(os.getpid(), signal.SIGINT)
+                    exit()
+                print(response)
+            if self.disconnected:
+                self.sock.close()
+                os.kill(os.getpid(), signal.SIGINT)
+                exit()
+
+
 def getmsg(sock):
-    response = sock.recv(1024)
-    if not response:
-        print("ERROR")
-        return
-    # print(response)
-    return response
+    try:
+        res = sock.recv(1024)
+        if not res:
+            print("ERROR")
+            return bytes("ERROR", encoding='utf8')
+    except ConnectionResetError:
+        return bytes("ERROR", encoding='utf8')
+    return res
 
 
-sock = socket(AF_INET, SOCK_STREAM)
-sock.connect(('127.0.0.1', 55000))
-uname = input("Your Username: ")
-socket_list = [sock]
-connected = False
-print(
-    "Here are the codewords for certain actions:\n'<all>': send message to everyone\n'<server>': perform action related directly to the server (Disconnect, get user list, etc)\n<username>': send private message")
 
-while True:
-    # sleep(0.5)
-
-    if not connected:
-        sock.send(bytes(uname, encoding='utf8'))
-        connected = True
-    else:
-        action = input("Please select action: ")
-        if action == "<server>":
-            print("Server actions")
-        else:
-            msg = input("Type message: ")
-            sock.send(bytes(action + ": " + msg, encoding='utf8'))
-    read_list, _, _ = select.select(socket_list, [], [], 5)
-    for curr_sock in read_list:
-        response = getmsg(curr_sock)
-        print(bytes.decode(response, encoding='utf8'))
-# sock.close()

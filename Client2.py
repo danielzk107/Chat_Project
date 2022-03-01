@@ -15,9 +15,15 @@ sock = socket(AF_INET, SOCK_STREAM)
 sock.connect(('127.0.0.1', 55000))
 msg = 'Robert'
 socket_list = [sock]
+connected = False
 while True:
-    sleep(0.5)
-    sock.send(bytes(msg, encoding='utf8'))
+    if not connected:
+        sock.send(bytes(msg, encoding='utf8'))
+        connected = True
+    else:
+        # sock.send(bytes("<all>" + msg, encoding='utf8'))
+        sleep(0.5)
+    # sock.send(bytes(msg, encoding='utf8'))
     read_list, _, _ = select.select(socket_list, [], [], 5)
     for curr_sock in read_list:
         response = getmsg(curr_sock)
