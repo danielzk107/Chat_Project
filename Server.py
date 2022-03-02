@@ -1,7 +1,12 @@
-import sys
+import datetime
 import socket
+import sys
 import select
-from _thread import *
+from os import *
+from os.path import *
+from time import sleep
+
+import files
 
 
 class Server:
@@ -9,6 +14,8 @@ class Server:
     def __init__(self):
         self.clientlist = []
         self.unamelist = {}
+        self.num_of_udpsockets_open = 0
+        # self.alltimeunamelist = {}
         self.msgs_list = []
         self.server_socket = socket.socket()
         self.server_socket.bind(('127.0.0.1', 55000))
@@ -22,7 +29,6 @@ class Server:
                     (new_sock, address) = self.server_socket.accept()
                     self.clientlist.append(new_sock)
                 else:
-                    # curr_sock.send(bytes("Please enter Username", encoding='utf8'))
                     data = curr_sock.recv(1024)
                     data = bytes.decode(data, encoding='utf8')
                     if data == "":
@@ -37,6 +43,7 @@ class Server:
                                 curr_sock.send(bytes("Server: Sorry, that username is already taken", encoding='utf8'))
                             else:
                                 self.unamelist[curr_sock] = data.strip()
+                                # self.alltimeunamelist[curr_sock] = data.strip()
                                 curr_sock.send(bytes("Server: Welcome, " + str(self.unamelist[curr_sock]) + "!", encoding='utf8'))
                                 print("Connected " + str(self.unamelist[curr_sock]))
                         else:
@@ -46,6 +53,8 @@ class Server:
                                     self.msgs_list.append((curr_sock, msg, "all"))
                                 elif action == "<server":
                                     self.msgs_list.append((curr_sock, msg, "server"))
+                                elif action == "<download":
+                                    self.msgs_list.append((curr_sock, msg, "download"))
                                 else:
                                     sendto = None
                                     uname = action.split("<")[1]
@@ -64,26 +73,45 @@ class Server:
                     for sock in self.clientlist:
                         if sock != curr_client:
                             newdata = self.unamelist[curr_client] + " to All: " + data
-                            sock.send(bytes(newdata, encoding='utf8'))
-                            print("Sent response")
-                if sendto == "server":
+                            sock.send(bytes(str(datetime.datetime.now().time().replace(microsecond=0)) + " " + newdata, encoding='utf8'))
+                            # print("Sent response")
+                elif sendto == "server":
                     if data.strip() == "disconnect" or data.strip() == "Disconnect":
                         curr_client.send(bytes("server: Goodbye", encoding='utf8'))
                         curr_client.close()
                         print("Disconnected " + self.unamelist[curr_client])
                         self.clientlist.remove(curr_client)
                         self.unamelist.pop(curr_client)
-                    if data.strip() == "clist" or data.strip() == "Clist":
+                    elif data.strip() == "clist" or data.strip() == "Clist":
                         usernames = list()
                         for sock in self.unamelist:
                             usernames.append(self.unamelist[sock])
                         curr_client.send(bytes("Active clients: " + str(usernames), encoding='utf8'))
+                    elif data.strip() == "flist" or data.strip() == "Flist":
+                        filelist = [file for file in listdir(".\\Files") if isfile(join(".\\Files", file))]
+                        curr_client.send(bytes("Available files: " + str(filelist), encoding='utf8'))
+                elif sendto == "download":
+                    self.send_file(data, curr_client)
                 elif sendto is not None:  #Could be simply else, but is elif just in case of an unexpected issue
                     try:
-                        sendto.send(bytes(self.unamelist[curr_client] + ": " + data, encoding='utf8'))
+                        sendto.send(bytes(str(datetime.datetime.now().time().replace(microsecond=0)) + " " + self.unamelist[curr_client] + ": " + data, encoding='utf8'))
                         print(self.unamelist[curr_client] + " to " + self.unamelist[sendto] + ": " + data.strip())
                     except Exception:
                         curr_client.send(bytes("ERROR", encoding='utf8'))
                         print("Unknown error occurred")
                 self.msgs_list.remove(msg)
 
+    def send_file(self, filename, sock: socket.socket):
+        file_sock = socket.socket()
+        file_sock.bind(('127.0.0.1', 55001 + self.num_of_udpsockets_open))
+        self.num_of_udpsockets_open += 1
+        sock.send(bytes(str(55001 + self.num_of_udpsockets_open), encoding='utf8'))
+        try:
+            file = files.File.open(filename, 'r')
+            data = file.read(1024)
+            while data:
+                if sock.send(data):
+                    data = file.read(1024)
+                    sleep(0.05)
+        except FileNotFoundError:
+            sock.send(bytes("Server: File not found", encoding='utf8'))
