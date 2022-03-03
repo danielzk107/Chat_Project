@@ -1,12 +1,10 @@
+import builtins
 import datetime
 import socket
-import sys
 import select
 from os import *
 from os.path import *
 from time import sleep
-
-import files
 
 
 class Server:
@@ -23,7 +21,7 @@ class Server:
 
     def run(self):
         while True:
-            read_list, write_list, err_list = select.select([self.server_socket] + self.clientlist, [], [])
+            read_list, _, _ = select.select([self.server_socket] + self.clientlist, [], [])
             for curr_sock in read_list:
                 if curr_sock is self.server_socket:
                     (new_sock, address) = self.server_socket.accept()
@@ -91,7 +89,7 @@ class Server:
                         filelist = [file for file in listdir(".\\Files") if isfile(join(".\\Files", file))]
                         curr_client.send(bytes("Available files: " + str(filelist), encoding='utf8'))
                 elif sendto == "download":
-                    self.send_file(data, curr_client)
+                    self.send_file(data.strip(), curr_client)
                 elif sendto is not None:  #Could be simply else, but is elif just in case of an unexpected issue
                     try:
                         sendto.send(bytes(str(datetime.datetime.now().time().replace(microsecond=0)) + " " + self.unamelist[curr_client] + ": " + data, encoding='utf8'))
@@ -104,14 +102,44 @@ class Server:
     def send_file(self, filename, sock: socket.socket):
         file_sock = socket.socket()
         file_sock.bind(('127.0.0.1', 55001 + self.num_of_udpsockets_open))
+        sock.send(bytes("port" + str(55001 + self.num_of_udpsockets_open), encoding='utf8'))
+        file_sock.listen(1)
         self.num_of_udpsockets_open += 1
-        sock.send(bytes(str(55001 + self.num_of_udpsockets_open), encoding='utf8'))
         try:
-            file = files.File.open(filename, 'r')
+            file = builtins.open(".\\Files\\" + filename, 'r')
             data = file.read(1024)
+            # sleep(1)
+            read_list, _, _ = select.select([file_sock], [], [], 2)
+            msg = read_list[0].recv(1024)
+            print(msg)
+            sock.send(bytes("Server: Downloading " + filename + "...", encoding='utf8'))
+            client = read_list[0]
             while data:
-                if sock.send(data):
+                if file_sock.sendto(bytes(data, encoding='utf8'), client):
                     data = file.read(1024)
                     sleep(0.05)
+            # file = builtins.open(filename, 'r')
+            # data = file.read(1024)
+            # while data:
+            #     if sock.send(bytes(data, encoding='utf8')):
+            #         data = file.read(1024)
+            #         sleep(0.05)
         except FileNotFoundError:
             sock.send(bytes("Server: File not found", encoding='utf8'))
+        # except AttributeError:
+        self.num_of_udpsockets_open -= 1
+        file_sock.close()
+        # UDP_IP = "127.0.0.1"
+        # UDP_PORT = 5005
+        # buf = 1024
+        # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # sock.sendto((bytes(filename, encoding='utf8')), (UDP_IP, UDP_PORT))
+        # print("Sending %s ..." % filename)
+        # f = builtins.open(filename, "r")
+        # data = f.read(buf)
+        # while data:
+        #     if sock.sendto(bytes(data, encoding='utf8'), ('127.0.0.1', 5005)):
+        #         data = f.read(buf)
+        #         sleep(0.02)  # Give receiver a bit time to save
+        # sock.close()
+        # f.close()
