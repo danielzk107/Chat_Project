@@ -23,6 +23,7 @@ class Server:
         self.server_socket.bind(('127.0.0.1', 55000))
         if self.server_socket:
             print("Server running")
+        self.unamelist[self.server_socket] = "Server"
         self.server_socket.listen(15)
 
     def run(self):
@@ -54,6 +55,7 @@ class Server:
                                         # self.alltimeunamelist[curr_sock] = data.strip()
                                         curr_sock.send(bytes("Server: Welcome, " + str(self.unamelist[curr_sock]) + "!", encoding='utf8'))
                                         print("Connected " + str(self.unamelist[curr_sock]))
+                                        self.msgs_list.append((self.server_socket, data.strip() + " has joined the server.", "all"))
                                         # self.downloads_per_client[curr_sock] = 0
                             else:
                                 try:

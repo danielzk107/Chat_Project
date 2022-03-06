@@ -38,11 +38,19 @@ class Client:
                         if self.Sending_File:
                             print("You cannot send two files at once.")
                         else:
-                            self.sock.send(bytes(action, encoding='utf8'))
-                            sleep(0.1)  # wait for the server to open the new connection before trying to receive from it
                             (username, filename) = action[7:].split(">")
-                            send_thread = threading.Thread(target=self.send_file_UDP, args=(filename.strip(), username))
-                            send_thread.start()
+                            filefound = True
+                            try:
+                                file = open(filename.strip(), 'r')
+                                file.close()
+                            except FileNotFoundError:
+                                print("File not found.")
+                                filefound = False
+                            if filefound:
+                                self.sock.send(bytes(action, encoding='utf8'))
+                                sleep(0.1)  # wait for the server to open the new connection before trying to receive from it
+                                send_thread = threading.Thread(target=self.send_file_UDP, args=(filename.strip(), username))
+                                send_thread.start()
                     elif first10 == "<download>":
                         self.sock.send(bytes(action, encoding='utf8'))
                         sleep(0.1)  # wait for the server to open the new connection before trying to receive from it
