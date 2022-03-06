@@ -32,7 +32,7 @@ from time import sleep
 #     for curr_sock in read_list:
 #         response = getmsg(curr_sock)
 #         print(bytes.decode(response, encoding='utf8'))
-import Client
+# import Client
 
 if __name__ == '__main__':
     # print(
@@ -61,29 +61,18 @@ if __name__ == '__main__':
     #         sock.close()
     #         exit()
 
-    UDP_IP = "127.0.0.1"
-    IN_PORT = 5005
-    timeout = 3
-
-    sock = socket(AF_INET, SOCK_DGRAM)
-    sock.bind((UDP_IP, IN_PORT))
-
+    sock = socket(AF_INET, SOCK_STREAM)
+    sock.connect(('127.0.0.1', 5005))
+    file = open("file1.txt", 'wb')
     while True:
-        data, addr = sock.recvfrom(1024)
-        if data:
-            print("File name:", data)
-            file_name = data.strip()
-            sock.sendto(bytes("Response", encoding='utf8'), addr)
-            f = open(file_name, 'wb')
+        data = sock.recv(1024)
+        if bytes.decode(data, 'utf8') == "!@#":
+            break
+        file.write(data)
+        sock.send(bytes("received", encoding='utf8'))
+    file.close()
+    sock.close()
+    print("Downloaded file")
 
-        while True:
-            ready = select.select([sock], [], [], timeout)
-            if ready[0]:
-                data, addr = sock.recvfrom(1024)
-                if data:
-                    f.write(data)
-                    sock.sendto(bytes("Response", encoding='utf8'), addr)
-            else:
-                print("%s Finish!" % file_name)
-                f.close()
-                break
+
+
