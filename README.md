@@ -1,11 +1,14 @@
 # Chat_Project
+
 Final project for the course Computer Networking. This readme file will not provide a detailed explanation for the project (for now), but will be used to answer all the theoretical questions in the given task.
 
 ## File transfer
 
+
 In this project, there are two forms of fire transfer: Server to Client and Client to Client. the server to client transfer is a direct download using a simple TCP protocol. The client to client transfer sends the file from one client to the server, who then sends it to the other client, using a fast and reliable implementation of the UDP protocol. In this transfer, with every packet is sent a packet number, that must match the current packet number saved on the receiving side. The sender will not proceed to the next packet until they got confirmation that the other side has received the previous one. The receiving side, that is, the server, will only send confirmation for a received packet if it itself has confirmation that the other client has successfully gotten the said packet. That way, we avoid packet loss and latency-related issues while transferring our files.
 
 ## Theoretical questions given with the task
+
 
 1) When a computer joins a new network, it first has to know its own address. In order to get that information, the computer uses its physical layer to send a request for a connection to the new network. To reach the DHCP server, which assigns an address for the computer dynamically, the computer sends its request to the switch connected to it. The switch sends that request in the network and the request is answered by the DHCP server, which sends all the related information (IP address, address of DNS server, etc.) to the computer. The communications between the computer and the server are able to occur because the switch knows the MAC address of the newly connected computer. Since the interaction uses the switch exclusively, the server and computer can communicate. When we want to send a message with our newly connected computer, we first need to find the address of our message's recipient. For that we turn to our DNS server and ask for the address that corresponds to the details we have. We then make a connection using our router, and send our wanted message using a protocol such as TCP\UDP or HTTP\HTTPS, depending on whom we send the message to.
 
